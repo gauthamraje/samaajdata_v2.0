@@ -5,10 +5,12 @@
 
 import type { WardRecord } from "./wards";
 import type { ActionRecord } from "./actions";
+import { formatGlossaryReply, matchGlossary, type GlossaryEntry } from "./glossary";
 
 export type AskResult =
   | { kind: "ward"; ward: WardRecord; reply: string; lat: number; lng: number }
   | { kind: "action"; action: ActionRecord; ward: WardRecord | null; reply: string; lat: number; lng: number }
+  | { kind: "glossary"; entry: GlossaryEntry; reply: string }
   | { kind: "none"; reply: string };
 
 function normalize(s: string): string {
@@ -41,6 +43,15 @@ export function ask(
   const q = normalize(query);
   if (!q || q.length < 2) {
     return { kind: "none", reply: "Type a question (e.g. ward name, place, waste, water, a councilor or issue)." };
+  }
+
+  const glossary = matchGlossary(query);
+  if (glossary) {
+    return {
+      kind: "glossary",
+      entry: glossary,
+      reply: formatGlossaryReply(glossary) + " Opening Solutions so you can reuse this pattern.",
+    };
   }
 
   // Match wards by name, councilor, description, issues, champions

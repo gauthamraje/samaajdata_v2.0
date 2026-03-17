@@ -123,6 +123,8 @@ function Sidebar({
   forumSolutions,
   loading,
   selectionType,
+  forceView,
+  forceCategory,
 }: {
   selectedWard: WardMeta | null;
   selectedAction: ActionRecord | null;
@@ -131,6 +133,10 @@ function Sidebar({
   loading: boolean;
   /** When user clicks a marker: 'action' → show Issues reported, 'ward' → show Ward details */
   selectionType: "ward" | "action" | null;
+  /** Optional parent override for the visible tab (e.g. Ask glossary → solutions). */
+  forceView?: SidebarView | null;
+  /** Optional parent override for category filter (solutions/citizens). */
+  forceCategory?: Category | "All" | null;
 }) {
   const [view, setView] = useState<SidebarView>("ward_details");
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
@@ -140,6 +146,14 @@ function Sidebar({
     if (selectionType === "action") setView("issues");
     if (selectionType === "ward") setView("ward_details");
   }, [selectionType]);
+
+  useEffect(() => {
+    if (forceView) setView(forceView);
+  }, [forceView]);
+
+  useEffect(() => {
+    if (forceCategory) setActiveCategory(forceCategory);
+  }, [forceCategory]);
 
   const categories: (Category | "All")[] = [
     "All",
@@ -411,12 +425,17 @@ function Sidebar({
                     <p className="text-xs font-semibold text-emerald-900">
                       {item.sol.issue}
                     </p>
-                    <p className="mt-1 text-xs text-emerald-900/80">
-                      {item.sol.fix_description}
-                    </p>
-                    <p className="mt-1 text-[11px] text-emerald-700">
-                      — {item.sol.contributor_name}
-                    </p>
+                    <details className="mt-1">
+                      <summary className="cursor-pointer select-none text-[11px] font-semibold text-emerald-700">
+                        What is this?
+                      </summary>
+                      <p className="mt-1 text-xs text-emerald-900/80">
+                        {item.sol.fix_description}
+                      </p>
+                      <p className="mt-1 text-[11px] text-emerald-700">
+                        — {item.sol.contributor_name}
+                      </p>
+                    </details>
                   </div>
                 ) : (
                   <div
@@ -426,12 +445,17 @@ function Sidebar({
                     <p className="text-xs font-semibold text-emerald-900">
                       {item.sol.title}
                     </p>
-                    <p className="mt-1 text-xs text-emerald-900/80 leading-relaxed">
-                      {item.sol.description}
-                    </p>
-                    <p className="mt-1 text-[11px] text-emerald-700">
-                      — Knowledge Base
-                    </p>
+                    <details className="mt-1">
+                      <summary className="cursor-pointer select-none text-[11px] font-semibold text-emerald-700">
+                        What is this?
+                      </summary>
+                      <p className="mt-1 text-xs text-emerald-900/80 leading-relaxed">
+                        {item.sol.description}
+                      </p>
+                      <p className="mt-1 text-[11px] text-emerald-700">
+                        — Knowledge Base
+                      </p>
+                    </details>
                   </div>
                 )
               )}
@@ -542,6 +566,8 @@ export default function Home() {
   const [askInput, setAskInput] = useState("");
   const [askReply, setAskReply] = useState<string | null>(null);
   const [flyToCenter, setFlyToCenter] = useState<[number, number] | null>(null);
+  const [forceSidebarView, setForceSidebarView] = useState<SidebarView | null>(null);
+  const [forceSidebarCategory, setForceSidebarCategory] = useState<Category | "All" | null>(null);
 
   const handleAsk = () => {
     const q = askInput.trim();
@@ -554,9 +580,13 @@ export default function Home() {
     if (result.kind === "ward") {
       setSelectedWard({ id: result.ward.id, name: result.ward.name });
       setSelectedAction(null);
+      setForceSidebarView("ward_details");
+      setForceSidebarCategory("All");
       setFlyToCenter([result.lat, result.lng]);
     } else if (result.kind === "action") {
       setSelectedAction(result.action);
+      setForceSidebarView("issues");
+      setForceSidebarCategory("All");
       if (result.ward) {
         setSelectedWard({ id: result.ward.id, name: result.ward.name });
       } else {
@@ -566,12 +596,22 @@ export default function Home() {
         });
       }
       setFlyToCenter([result.lat, result.lng]);
+    } else if (result.kind === "glossary") {
+      setSelectedWard(null);
+      setSelectedAction(null);
+      setForceSidebarView("solutions");
+      setForceSidebarCategory(result.entry.category ?? "All");
     } else {
       setSelectedWard(null);
       setSelectedAction(null);
     }
     // Clear flyTo after flying so next ask can trigger fly again
     setTimeout(() => setFlyToCenter(null), 2000);
+    // Clear forced sidebar state after user sees it
+    setTimeout(() => {
+      setForceSidebarView(null);
+      setForceSidebarCategory(null);
+    }, 6000);
   };
 
   const handleMarkerClick = (ward: WardRecord) => {
@@ -661,6 +701,8 @@ export default function Home() {
           forumSolutions={forumSolutions}
           loading={wardsLoading}
           selectionType={selectedAction ? "action" : selectedWard ? "ward" : null}
+          forceView={forceSidebarView}
+          forceCategory={forceSidebarCategory}
         />
       </main>
     </div>

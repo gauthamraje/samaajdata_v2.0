@@ -12,11 +12,13 @@ Kerala achieved "negative wastage" in its vaccination drive. Success factors: 1.
 TOPIC: Thripthi’s Trash-to-Treasure Journey (Bengaluru)
 Thripthi Perlap led a mission to fix a waste spot in Basaweshwar Nagar that existed for 35 years. She engaged 74 stakeholders and navigated six levels of authority (JHI, Police, AEE, Supervisor, Ward Engineer, Control Room). The spot was cleaned, halogen lights were installed to deter night dumping, and 30 plants were added for beautification.
 
-TOPIC: DIY Street Audit Guide (KYC - Know Your Street)
-A tool empowering citizens to address minor civic issues. Process: 1. Identify issues (water, roads, sanitation). 2. Gather a team. 3. Create a questionnaire. 4. Audit streets. 5. Visualize data on a dashboard to highlight gaps to authorities.
+TOPIC: Know Your Street — DIY Street Audit (AKA KYC)
+What it is: A simple citizen audit to document local civic issues (water/roads/sanitation/safety) and present a clear list to authorities.
+How it works: 1) Identify issues 2) Gather a team 3) Use a checklist/questionnaire 4) Walk and record evidence 5) Share a short report and track closures.
 
-TOPIC: DIY IoT: Luminosity Analysis Mapping Prototype (LAMP)
-A DIY device to measure street light levels to reduce accidents. Components: NodeMCU, BH1750 Light Sensor, Neo6M GPS. Function: Collects light data and pushes it to a Google Sheet to create a "Luminosity Map" for presentation to local governance.
+TOPIC: Streetlight Brightness Mapping (AKA LAMP)
+What it is: Measure streetlight brightness and map “dark spots” so repairs can be prioritized to reduce accidents and improve safety.
+How it works: A DIY sensor + GPS collects light readings and uploads them to create a simple map you can share with the ward office.
 
 TOPIC: DIY IoT: Road Flooding Indicator
 A device to alert authorities during heavy rains. Hardware: Soil Moisture Sensor and GSM 800C module. Function: When water reaches a threshold level, the device sends an SMS alert to authorities.
@@ -48,8 +50,9 @@ Investigation found that opaque bins prevent users from confirming correct segre
 TOPIC: Gruha Lakshmi Scheme (Karnataka)
 Monthly Rs 2,000 allowance for women heads of families. Eligibility: Income < 2L/year, no govt job, 18-50 years old. Requires Aadhar, Ration Card, Bank details, and Income Certificate. Applications via Seva Sindhu portal.
 
-TOPIC: Fix a Blackspot formula (CCC)
-Formula: Calling, Cleaning, Collaborating. 1. Call SWM/BBMP for collection. 2. Clean with a group using safety gear. 3. Collaborate with NGOs/RWAs to maintain the spot. Tip: Use Terracotta paint to mask stains and discourage public urination.
+TOPIC: Fix a Dumping “Blackspot” (AKA CCC: Call–Clean–Collaborate)
+What it is: A repeatable method to fix a chronic dumping spot: schedule pickup, clean safely as a group, then maintain with RWAs/NGOs.
+How it works: 1) Call SWM/BBMP for collection 2) Clean with safety gear 3) Collaborate on upkeep. Tip: Terracotta paint can mask stains and discourage repeat dumping.
 
 TOPIC: DIY Weighing Scale for Food Waste
 Hardware: Arduino Uno, Load Cell, HX711. Used in schools to display real-time weight of food wasted daily to nudge behavior change in students.
@@ -57,10 +60,10 @@ Hardware: Arduino Uno, Load Cell, HX711. Used in schools to display real-time we
 TOPIC: DIY Street Light Navigation (Color Coding)
 A simple solution for household power saving. Step: Label switchboards with stickers (Near, Further, Farthest) using color codes to prevent confusion and unnecessary power usage.
 
-TOPIC: Impact & Leadership Spotlight
+TOPIC: Impact & Leadership Spotlight (DISS explained inside)
 Athreya (Chennai): As President of Chennai’s Bala Cabinet, Athreya used "activated empathy" to act as a bridge between those with resources and those in need in local slums. She demonstrated how 21st-century problem-solving skills can practically support Sustainable Development Goals.
 
-Baswaling Kalwane (Nanded): A primary school teacher who addressed the infamous low hygiene standards in Mukhed. He applied the DISS method (Discover-Investigate-Solve-Share), leading students to clean the school yard and close surroundings. His leadership eventually secured weekly clean-up vehicles from the municipal corporation.
+Baswaling Kalwane (Nanded): A primary school teacher who addressed low hygiene standards in Mukhed. He applied the DISS method (Discover–Investigate–Solve–Share): find a problem, understand root cause, implement a fix, then share learnings. The effort secured weekly clean-up vehicles from the municipal corporation.
 
 Sukhmanpreet Kaur (Punjab): A Solve Ninja who implemented the DISS plan in her government school to make a major religious event (Paath) plastic-free. She replaced disposable plates and glasses with steel utensils sourced from a local Gurdwara, preventing significant plastic waste.
 
@@ -75,8 +78,8 @@ Radhika (Chikka Changavi): Used her experience to independently engage the Gram 
 
 Leelavathi (Marshettihalli): lobbyed all panchayat members independently to address safety through the successful installation of street lights in her area.
 
-TOPIC: High-Level Citizen Advocacy
-BMLTA Campaign (Bengaluru): A strategic campaign advocating for the Bengaluru Metropolitan Land Transport Authority to act as a nodal authority rather than a separate state-controlled parastatal. It pushed for integrated mobility and better coordination between the BMTC and BMRCL (Metro).
+TOPIC: High-Level Citizen Advocacy (BMLTA explained inside)
+BMLTA Campaign (Bengaluru): A mobility governance push for one coordinating authority so buses/metro/traffic planning work together instead of in silos. It argues for BMLTA to act as a nodal authority enabling integrated mobility and better coordination between BMTC and BMRCL (Metro).
 
 Chikkabavanar Lake Rejuvenation: A project led by 5 Solve Ninjas whose persistent campaigning and data-driven reporting resulted in the Government of Karnataka allocating a 12-crore budget for lake restoration.
 
