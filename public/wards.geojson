@@ -1,0 +1,65 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "WARD_1",
+        "name": "Ward 1 - Central",
+        "councilor": "Anita Rao"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.585, 12.975],
+            [77.595, 12.975],
+            [77.595, 12.985],
+            [77.585, 12.985],
+            [77.585, 12.975]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "WARD_2",
+        "name": "Ward 2 - East",
+        "councilor": "Imran Sheikh"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.595, 12.975],
+            [77.605, 12.975],
+            [77.605, 12.985],
+            [77.595, 12.985],
+            [77.595, 12.975]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "WARD_3",
+        "name": "Ward 3 - West",
+        "councilor": "Deepa Kulkarni"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.575, 12.975],
+            [77.585, 12.975],
+            [77.585, 12.985],
+            [77.575, 12.985],
+            [77.575, 12.975]
+          ]
+        ]
+      }
+    }
+  ]
+}

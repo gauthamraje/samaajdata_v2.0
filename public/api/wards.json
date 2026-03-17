@@ -1,0 +1,128 @@
+[
+  {
+    "id": "WARD_1",
+    "name": "Ward 1 - Central",
+    "latitude": 12.98,
+    "longitude": 77.59,
+    "councilor_name": "Anita Rao",
+    "councilor_contact": "+91 98765 43210",
+    "description": "Central ward covering MG Road and Residency Road.",
+    "status": "Active",
+    "issues": [
+      {
+        "description": "Overflowing community bin near Central Park entrance.",
+        "status": "In Progress"
+      },
+      {
+        "description": "Potholes reported on Residency Road stretch.",
+        "status": "Solved"
+      }
+    ],
+    "proven_solutions": [
+      {
+        "issue": "Dry waste not being collected",
+        "fix_description": "Residents formed a 12-building collective and coordinated with BBMP for weekly dry-waste pickup.",
+        "contributor_name": "RWA Central Park",
+        "category": "Waste"
+      }
+    ],
+    "local_champions": [
+      {
+        "name": "Ravi Kumar",
+        "expertise": "Waste & lake protection",
+        "contact": "ravi.k@example.com",
+        "categories": ["Waste", "Health"]
+      },
+      {
+        "name": "Meera Iyer",
+        "expertise": "Mobility & pedestrian safety",
+        "contact": "meera.iyer@example.com",
+        "categories": ["Safety"]
+      }
+    ]
+  },
+  {
+    "id": "WARD_2",
+    "name": "Ward 2 - East",
+    "latitude": 12.99,
+    "longitude": 77.61,
+    "councilor_name": "Imran Sheikh",
+    "councilor_contact": "+91 98765 43211",
+    "description": "East ward including Sunrise Layout and surrounding areas.",
+    "status": "Active",
+    "issues": [
+      {
+        "description": "Irregular water supply in Sunrise Layout.",
+        "status": "In Progress"
+      },
+      {
+        "description": "Streetlight outage on East Main Road.",
+        "status": "Open"
+      }
+    ],
+    "proven_solutions": [
+      {
+        "issue": "Water scarcity and tanker dependence",
+        "fix_description": "RWAs pooled funds to install rooftop harvesting, reducing dependence on tanker supply.",
+        "contributor_name": "Sunrise Layout RWA",
+        "category": "Water"
+      }
+    ],
+    "local_champions": [
+      {
+        "name": "Sanjana Rao",
+        "expertise": "Water supply & borewells",
+        "contact": "sanjana.r@example.com",
+        "categories": ["Water", "Health"]
+      },
+      {
+        "name": "Kiran Reddy",
+        "expertise": "Road safety & traffic",
+        "contact": "kiran.r@example.com",
+        "categories": ["Safety"]
+      }
+    ]
+  },
+  {
+    "id": "WARD_3",
+    "name": "Ward 3 - West",
+    "latitude": 12.97,
+    "longitude": 77.57,
+    "councilor_name": "Deepa Kulkarni",
+    "councilor_contact": "+91 98765 43212",
+    "description": "West ward covering Lakshmi Layout and community hall zone.",
+    "status": "Active",
+    "issues": [
+      {
+        "description": "Uncollected dry waste outside community hall.",
+        "status": "In Progress"
+      },
+      {
+        "description": "Broken streetlight at Lakshmi Circle.",
+        "status": "Solved"
+      }
+    ],
+    "proven_solutions": [
+      {
+        "issue": "Unsafe route for school children",
+        "fix_description": "Parents created a safe walking route by fixing signage and working with traffic police.",
+        "contributor_name": "Lakshmi Layout Parents Group",
+        "category": "Safety"
+      }
+    ],
+    "local_champions": [
+      {
+        "name": "Ahmed Khan",
+        "expertise": "Streetlighting & safety",
+        "contact": "ahmed.k@example.com",
+        "categories": ["Safety"]
+      },
+      {
+        "name": "Priya Nair",
+        "expertise": "Waste segregation & composting",
+        "contact": "priya.n@example.com",
+        "categories": ["Waste", "Health"]
+      }
+    ]
+  }
+]

@@ -1,0 +1,83 @@
+Solve Ninja Knowledge Base: Citizen-Led Solutions & Policy Insights
+TOPIC: Bengaluru COVID-19 Vaccination Model
+Analysis of vaccination trends in Bengaluru during 2021. Highlights include the need to maximize efficiency and minimize wastage to reach set targets. It compares the Bengaluru model with successes in Kerala (zero wastage via strict protocols) and Maharashtra (village-level mobilization).
+Best Practices: 1. COVID-19 Literacy 2. Vaccination Equity 3. Door-to-Door Vaccination 4. Supply Chain Management using centralized warehouses.
+
+TOPIC: Chennai Floods: Crowdsourced Citizen Ideas
+A compilation of 20 citizen-submitted ideas to solve recurring urban flooding in Chennai. Key Proposals: Comprehensive drainage systems designed with hydrologists, desilting canals, removing illegal encroachments, and a total ban on plastic to prevent drain clogging.
+
+TOPIC: Kerala Model of COVID Vaccination
+Kerala achieved "negative wastage" in its vaccination drive. Success factors: 1. Trained Nurses capable of extracting 10 full doses from 5ml vials. 2. ASHA worker mobilization ensuring 10 beneficiaries are ready before a vial is opened. 3. Improved cold chain systems.
+
+TOPIC: Thripthi’s Trash-to-Treasure Journey (Bengaluru)
+Thripthi Perlap led a mission to fix a waste spot in Basaweshwar Nagar that existed for 35 years. She engaged 74 stakeholders and navigated six levels of authority (JHI, Police, AEE, Supervisor, Ward Engineer, Control Room). The spot was cleaned, halogen lights were installed to deter night dumping, and 30 plants were added for beautification.
+
+TOPIC: DIY Street Audit Guide (KYC - Know Your Street)
+A tool empowering citizens to address minor civic issues. Process: 1. Identify issues (water, roads, sanitation). 2. Gather a team. 3. Create a questionnaire. 4. Audit streets. 5. Visualize data on a dashboard to highlight gaps to authorities.
+
+TOPIC: DIY IoT: Luminosity Analysis Mapping Prototype (LAMP)
+A DIY device to measure street light levels to reduce accidents. Components: NodeMCU, BH1750 Light Sensor, Neo6M GPS. Function: Collects light data and pushes it to a Google Sheet to create a "Luminosity Map" for presentation to local governance.
+
+TOPIC: DIY IoT: Road Flooding Indicator
+A device to alert authorities during heavy rains. Hardware: Soil Moisture Sensor and GSM 800C module. Function: When water reaches a threshold level, the device sends an SMS alert to authorities.
+
+TOPIC: Stubble Burning Solutions (Punjab)
+Hardeep Singh saved 10,500 acres from stubble burning. The "Gyan Technique" (Mulching): Sprinkle wheat seeds into leftover stubble, use a reaper to thresh (keeping a 4-inch gap from ground), then water. Key learning: Success requires connecting skeptical farmers with successful "idol" farmers.
+
+TOPIC: DIY Bio-Enzyme Guide
+Transforming citrus peels into natural cleaners. Ratio: 1 part jaggery : 3 parts citrus peels : 10 parts water. Ferment in a plastic bottle for 90 days, releasing gas for the first 15 days. Replaces chemical cleaners for floors, toilets, and plants.
+
+TOPIC: Sarakki Lake Transformation (Bengaluru)
+Professor Bhat’s restoration guide: 1. Formed the SLAIT Trust with apolitical experts. 2. Filed a PIL to remove 200+ encroachments. 3. Diverted sewage via a 5 MLD STP. 4. Created a Biodiversity Park with 26 native tree species.
+
+TOPIC: Nagarika Sakhi Local Governance Successes
+Indramma & Varalakshmi (Dodda Changavi): Built an Anganwadi center and repaired a water filter.
+
+Radhika (Chikka Changavi): Successfully secured improved drainage for her village through independent Gram Panchayat engagement.
+
+Leelavathi (Marshettihalli): Independently lobbied all panchayat members until street lights were installed.
+
+Gulab (D Kunnala): Advocated for the repair of an Anganwadi center and fixed drinking water scarcity.
+
+TOPIC: DIY IoT: Compost Monitor
+Tracks aerobic composting. Logic: Compares internal bin temperature (DS18B20 sensor) with ambient temperature (DHT22). Composting is "Done" when the internal temperature equals ambient temperature.
+
+TOPIC: DIY Human-Centered Dustbin
+Investigation found that opaque bins prevent users from confirming correct segregation. Solution: Transparent window bins mounted on poles. Impact: 52 bins diverted 17,817 kgs of waste in Bengaluru and Chennai.
+
+TOPIC: Gruha Lakshmi Scheme (Karnataka)
+Monthly Rs 2,000 allowance for women heads of families. Eligibility: Income < 2L/year, no govt job, 18-50 years old. Requires Aadhar, Ration Card, Bank details, and Income Certificate. Applications via Seva Sindhu portal.
+
+TOPIC: Fix a Blackspot formula (CCC)
+Formula: Calling, Cleaning, Collaborating. 1. Call SWM/BBMP for collection. 2. Clean with a group using safety gear. 3. Collaborate with NGOs/RWAs to maintain the spot. Tip: Use Terracotta paint to mask stains and discourage public urination.
+
+TOPIC: DIY Weighing Scale for Food Waste
+Hardware: Arduino Uno, Load Cell, HX711. Used in schools to display real-time weight of food wasted daily to nudge behavior change in students.
+
+TOPIC: DIY Street Light Navigation (Color Coding)
+A simple solution for household power saving. Step: Label switchboards with stickers (Near, Further, Farthest) using color codes to prevent confusion and unnecessary power usage.
+
+TOPIC: Impact & Leadership Spotlight
+Athreya (Chennai): As President of Chennai’s Bala Cabinet, Athreya used "activated empathy" to act as a bridge between those with resources and those in need in local slums. She demonstrated how 21st-century problem-solving skills can practically support Sustainable Development Goals.
+
+Baswaling Kalwane (Nanded): A primary school teacher who addressed the infamous low hygiene standards in Mukhed. He applied the DISS method (Discover-Investigate-Solve-Share), leading students to clean the school yard and close surroundings. His leadership eventually secured weekly clean-up vehicles from the municipal corporation.
+
+Sukhmanpreet Kaur (Punjab): A Solve Ninja who implemented the DISS plan in her government school to make a major religious event (Paath) plastic-free. She replaced disposable plates and glasses with steel utensils sourced from a local Gurdwara, preventing significant plastic waste.
+
+Thripthi Perlap (Bengaluru): Managed a longstanding waste spot that had existed for 35 years. She engaged 74 different stakeholders and successfully navigated six different levels of local authority—from the Junior Health Inspector to the Control Room—to secure a sustainable solution.
+
+TOPIC: Nagarika Sakhi Local Successes (Extended)
+Gulab (D Kunnala): A resident who overcame extreme self-doubt and hesitation to step outside her home. Through training, she gained the confidence to collaborate with teachers and panchayat members to successfully advocate for the repair of an Anganwadi center.
+
+Indramma & Varalakshmi (Dodda Changavi): Two Sakhis who collaborated to build a place for children to learn and play while ensuring the community had clean water by fixing local water filter units.
+
+Radhika (Chikka Changavi): Used her experience to independently engage the Gram Panchayat, gathering signatures from villagers and SHG members to secure improved road facilities and drainage.
+
+Leelavathi (Marshettihalli): lobbyed all panchayat members independently to address safety through the successful installation of street lights in her area.
+
+TOPIC: High-Level Citizen Advocacy
+BMLTA Campaign (Bengaluru): A strategic campaign advocating for the Bengaluru Metropolitan Land Transport Authority to act as a nodal authority rather than a separate state-controlled parastatal. It pushed for integrated mobility and better coordination between the BMTC and BMRCL (Metro).
+
+Chikkabavanar Lake Rejuvenation: A project led by 5 Solve Ninjas whose persistent campaigning and data-driven reporting resulted in the Government of Karnataka allocating a 12-crore budget for lake restoration.
+
+COVIDbed & Resource Mapping: A nationwide volunteer effort where Solve Ninjas built a real-time dashboard of hospital beds and oxygen resources that supported 11 lakh citizens during the pandemic peak.
