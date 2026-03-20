@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useMap } from "react-leaflet";
 import type { WardRecord } from "@/services/wards";
@@ -30,6 +30,8 @@ const MarkerClusterGroup = dynamic(
   { ssr: false }
 );
 
+import "leaflet-draw/dist/leaflet.draw.css";
+
 /** Listens to flyTo prop and flies the map to that point. Rendered inside MapContainer. */
 function FlyTo({ flyTo }: { flyTo: [number, number] | null }) {
   const map = useMap();
@@ -37,6 +39,179 @@ function FlyTo({ flyTo }: { flyTo: [number, number] | null }) {
     if (!flyTo) return;
     map.flyTo(flyTo, 12, { duration: 1 });
   }, [map, flyTo?.[0], flyTo?.[1]]);
+  return null;
+}
+
+type CompareArea = {
+  id: string;
+  label: string;
+  color: string;
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
+};
+
+function CompareDrawTools({
+  enabled,
+  onAreasChange,
+  resetToken,
+}: {
+  enabled: boolean;
+  onAreasChange: (areas: CompareArea[]) => void;
+  resetToken: number;
+}) {
+  const DRAW_CREATED = "draw:created";
+  const DRAW_EDITED = "draw:edited";
+  const DRAW_DELETED = "draw:deleted";
+  const map = useMap();
+  const drawControlRef = useRef<any>(null);
+  const featureGroupRef = useRef<any>(null);
+  const leafletRef = useRef<any>(null);
+  const isInitializedRef = useRef(false);
+  const lastResetTokenRef = useRef<number>(0);
+  const onAreasChangeRef = useRef(onAreasChange);
+  const enabledRef = useRef(enabled);
+  const controlAttachedRef = useRef(false);
+  const colors = useRef(["#2563eb", "#059669"]);
+  const labels = useRef(["Area A", "Area B"]);
+
+  useEffect(() => {
+    onAreasChangeRef.current = onAreasChange;
+  }, [onAreasChange]);
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  const emit = () => {
+    const featureGroup = featureGroupRef.current;
+    if (!featureGroup) return;
+    const layers: any[] = [];
+    featureGroup.eachLayer((layer: any) => layers.push(layer));
+    const areas = layers.slice(0, 2).map((layer, i) => ({
+      id: `cmp-${i + 1}`,
+      label: labels.current[i],
+      color: colors.current[i],
+      geometry: layer.toGeoJSON().geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon,
+    }));
+    onAreasChangeRef.current(areas);
+  };
+
+  const teardown = () => {
+    const L = leafletRef.current;
+    if (L && (map as any)._compareOnCreated) {
+      map.off(DRAW_CREATED, (map as any)._compareOnCreated);
+      map.off(DRAW_EDITED, (map as any)._compareOnEdited);
+      map.off(DRAW_DELETED, (map as any)._compareOnDeleted);
+      (map as any)._compareOnCreated = null;
+      (map as any)._compareOnEdited = null;
+      (map as any)._compareOnDeleted = null;
+    }
+    if (drawControlRef.current) {
+      if (controlAttachedRef.current) map.removeControl(drawControlRef.current);
+      drawControlRef.current = null;
+      controlAttachedRef.current = false;
+    }
+    if (featureGroupRef.current) {
+      map.removeLayer(featureGroupRef.current);
+      featureGroupRef.current = null;
+    }
+    isInitializedRef.current = false;
+    onAreasChangeRef.current([]);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    if (isInitializedRef.current) {
+      // Reset only when resetToken changes; do not clear on normal rerenders.
+      if (resetToken !== lastResetTokenRef.current && featureGroupRef.current) {
+        lastResetTokenRef.current = resetToken;
+        featureGroupRef.current.clearLayers();
+        emit();
+      }
+      return;
+    }
+
+    import("leaflet").then((L) => {
+      if (cancelled) return;
+      leafletRef.current = L;
+      import("leaflet-draw").then(() => {
+        if (cancelled || isInitializedRef.current) return;
+        const featureGroup = new L.FeatureGroup();
+        featureGroupRef.current = featureGroup;
+        map.addLayer(featureGroup);
+        const drawControl = new (L.Control as any).Draw({
+          draw: {
+            polygon: true,
+            rectangle: true,
+            circle: false,
+            circlemarker: false,
+            marker: false,
+            polyline: false,
+          },
+          edit: {
+            featureGroup,
+            remove: true,
+          },
+        });
+        drawControlRef.current = drawControl;
+        map.addControl(drawControl);
+        controlAttachedRef.current = true;
+
+        const onCreated = (e: any) => {
+          if (!enabledRef.current) return;
+          const count = featureGroup.getLayers().length;
+          if (count >= 2) return;
+          const layer = e.layer;
+          layer.setStyle?.({
+            color: colors.current[count],
+            fillColor: colors.current[count],
+            fillOpacity: 0.15,
+            weight: 2,
+          });
+          featureGroup.addLayer(layer);
+          emit();
+        };
+        const onEdited = () => emit();
+        const onDeleted = () => emit();
+        (map as any)._compareOnCreated = onCreated;
+        (map as any)._compareOnEdited = onEdited;
+        (map as any)._compareOnDeleted = onDeleted;
+        map.on(DRAW_CREATED, onCreated);
+        map.on(DRAW_EDITED, onEdited);
+        map.on(DRAW_DELETED, onDeleted);
+        isInitializedRef.current = true;
+        lastResetTokenRef.current = resetToken;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [map, resetToken]);
+
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    // Only clear when compare mode is explicitly disabled.
+    if (!enabled) {
+      if (featureGroupRef.current) {
+        featureGroupRef.current.clearLayers();
+      }
+      onAreasChangeRef.current([]);
+      if (drawControlRef.current && controlAttachedRef.current) {
+        map.removeControl(drawControlRef.current);
+        controlAttachedRef.current = false;
+      }
+      return;
+    }
+    if (enabled && drawControlRef.current && !controlAttachedRef.current) {
+      map.addControl(drawControlRef.current);
+      controlAttachedRef.current = true;
+    }
+  }, [enabled, map]);
+
+  useEffect(() => {
+    return () => teardown();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return null;
 }
 
@@ -78,6 +253,11 @@ interface WardMapProps {
   selectedActionId: string | null;
   /** When set, map flies to this [lat, lng] (e.g. from "Ask" search). */
   flyTo: [number, number] | null;
+  /** When set, show only solution-relevant action markers on map. */
+  solutionCategoryFilter?: "All" | "Waste" | "Water" | "Safety" | "Health" | null;
+  compareMode?: boolean;
+  compareResetToken?: number;
+  onCompareAreasChange?: (areas: CompareArea[]) => void;
   onWardClick: (ward: WardRecord) => void;
   onActionClick: (action: ActionRecord) => void;
 }
@@ -89,6 +269,10 @@ export default function WardMap({
   selectedWardId,
   selectedActionId,
   flyTo,
+  solutionCategoryFilter = null,
+  compareMode = false,
+  compareResetToken = 0,
+  onCompareAreasChange,
   onWardClick,
   onActionClick,
 }: WardMapProps) {
@@ -147,6 +331,15 @@ export default function WardMap({
         typeof a.longitude === "number" &&
         a.ward_id
     )
+    .filter((a) => {
+      if (!solutionCategoryFilter || solutionCategoryFilter === "All") return true;
+      const c = (a.category || "").toLowerCase();
+      if (solutionCategoryFilter === "Waste") return c.includes("waste") || c.includes("solid");
+      if (solutionCategoryFilter === "Water") return c.includes("water") || c.includes("sanitation");
+      if (solutionCategoryFilter === "Safety") return c.includes("safety") || c.includes("street") || c.includes("traffic") || c.includes("road");
+      if (solutionCategoryFilter === "Health") return c.includes("health") || c.includes("civic");
+      return true;
+    })
     .slice(0, MAX_ACTIONS_ON_MAP);
 
   return (
@@ -159,6 +352,11 @@ export default function WardMap({
         className="h-full w-full"
       >
         <FlyTo flyTo={flyTo} />
+        <CompareDrawTools
+          enabled={compareMode}
+          resetToken={compareResetToken}
+          onAreasChange={onCompareAreasChange ?? (() => {})}
+        />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

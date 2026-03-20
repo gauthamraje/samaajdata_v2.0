@@ -11,6 +11,7 @@ import {
   MapPinned,
   MessageCircle,
   Send,
+  LocateFixed,
 } from "lucide-react";
 import {
   fetchWards,
@@ -26,6 +27,8 @@ import {
   type ForumSolution,
 } from "@/services/forumKb";
 import { ask, type AskResult } from "@/services/ask";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import { point } from "@turf/helpers";
 
 /** Build synthetic ward detail when only an action is selected (no ward in map). */
 function buildSyntheticDetail(
@@ -83,6 +86,23 @@ function inferCategory(cat: string | undefined): Category {
   return "Waste";
 }
 
+function nearestWardFor(lat: number, lng: number, wards: WardRecord[]): WardRecord | null {
+  if (wards.length === 0) return null;
+  let best: WardRecord | null = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const w of wards) {
+    if (typeof w.latitude !== "number" || typeof w.longitude !== "number") continue;
+    const dLat = w.latitude - lat;
+    const dLng = w.longitude - lng;
+    const d = dLat * dLat + dLng * dLng;
+    if (d < bestDist) {
+      bestDist = d;
+      best = w;
+    }
+  }
+  return best;
+}
+
 const WardMap = dynamic(() => import("@/components/WardMap"), {
   ssr: false,
   loading: () => (
@@ -102,12 +122,28 @@ interface WardMeta {
 
 export type SidebarMode = "area_brief" | "local_signals" | "solution_finder";
 type LocalSignalsTab = "issues" | "open_data" | "citizens";
+type CompareArea = {
+  id: string;
+  label: string;
+  color: string;
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
+};
+type CompareMetric = {
+  areaId: string;
+  label: string;
+  color: string;
+  issues: number;
+  openData: number;
+  activeCitizens: number;
+};
 
 const SIDEBAR_MODES: { id: SidebarMode; label: string; helper: string }[] = [
   { id: "area_brief", label: "Local governance", helper: "Ward governance and local context." },
-  { id: "local_signals", label: "Local data", helper: "Issues, open data, and active citizens." },
+  { id: "local_signals", label: "Local data", helper: "Citizen reports, public records, and active citizens." },
   { id: "solution_finder", label: "Solutions", helper: "Practical solutions with trust signals." },
 ];
+
+type LocationSuggestion = { display_name: string; lat: string; lon: string };
 
 /** Unified solution item for display (ward or forum). */
 type SolutionDisplay = { type: "ward"; sol: ProvenSolutionRecord } | { type: "forum"; sol: ForumSolution };
@@ -123,6 +159,12 @@ function Sidebar({
   forceCategory,
   actions,
   onPickSample,
+  onSolutionsMapFilterChange,
+  compareMode,
+  compareAreas,
+  compareMetrics,
+  onExitCompareMode,
+  onResetCompareAreas,
 }: {
   selectedWard: WardMeta | null;
   selectedAction: ActionRecord | null;
@@ -137,10 +179,17 @@ function Sidebar({
   forceCategory?: Category | "All" | null;
   actions: ActionRecord[];
   onPickSample: () => void;
+  onSolutionsMapFilterChange: (category: Category | "All" | null) => void;
+  compareMode: boolean;
+  compareAreas: CompareArea[];
+  compareMetrics: CompareMetric[];
+  onExitCompareMode: () => void;
+  onResetCompareAreas: () => void;
 }) {
   const [mode, setMode] = useState<SidebarMode>("area_brief");
   const [signalsTab, setSignalsTab] = useState<LocalSignalsTab>("issues");
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
+  const [solutionsViewMode, setSolutionsViewMode] = useState<"text" | "map">("text");
 
   // Switch panel mode when user clicks a marker: action → local signals, ward → area brief
   useEffect(() => {
@@ -158,6 +207,14 @@ function Sidebar({
   useEffect(() => {
     if (forceCategory) setActiveCategory(forceCategory);
   }, [forceCategory]);
+
+  useEffect(() => {
+    const filter =
+      mode === "solution_finder" && solutionsViewMode === "map"
+        ? activeCategory
+        : null;
+    onSolutionsMapFilterChange(filter);
+  }, [mode, solutionsViewMode, activeCategory, onSolutionsMapFilterChange]);
 
   const categories: (Category | "All")[] = [
     "All",
@@ -256,6 +313,112 @@ function Sidebar({
   const openDataItems = actions
     .filter((a) => (displayWard?.id ? a.ward_id === displayWard.id : true))
     .slice(0, 4);
+
+  if (compareMode) {
+    const a = compareMetrics[0] ?? null;
+    const b = compareMetrics[1] ?? null;
+    const metricCmp = (
+      key: "issues" | "openData" | "activeCitizens",
+      lowerIsBetter: boolean
+    ): "a" | "b" | "tie" | null => {
+      if (!a || !b) return null;
+      const av = a[key];
+      const bv = b[key];
+      if (av === bv) return "tie";
+      if (lowerIsBetter) return av < bv ? "a" : "b";
+      return av > bv ? "a" : "b";
+    };
+
+    return (
+      <aside className="flex w-full flex-col bg-white/90 shadow-[0_0_40px_rgba(15,23,42,0.06)] md:w-[380px]">
+        <div className="border-b border-sky-100 px-4 py-3 md:px-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">Compare areas</p>
+          <ol className="mt-1 list-decimal space-y-0.5 pl-4 text-xs text-slate-500">
+            <li>Use draw tools on the map (top-left): polygon or rectangle.</li>
+            <li>Complete Area A, then draw Area B.</li>
+            <li>See side-by-side metrics below.</li>
+          </ol>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={onResetCompareAreas}
+              className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1 text-xs text-sky-700"
+            >
+              Clear drawings
+            </button>
+            <button
+              type="button"
+              onClick={onExitCompareMode}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700"
+            >
+              Exit compare mode
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4 md:px-5 md:py-5">
+          {compareAreas.length < 2 ? (
+            <p className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              Draw Area A and Area B to start comparison.
+            </p>
+          ) : null}
+          <div className="mt-3 space-y-2">
+            {compareAreas.map((area) => (
+              <div key={area.id} className="rounded-lg border border-slate-100 bg-white px-3 py-2">
+                <p className="text-xs font-semibold" style={{ color: area.color }}>{area.label}</p>
+                <p className="text-[11px] text-slate-500">Area drawn on map</p>
+              </div>
+            ))}
+          </div>
+          {compareMetrics.length > 0 && (
+            <div className="mt-4 rounded-lg border border-slate-100 bg-white p-3">
+              <p className="text-xs font-semibold text-slate-800">Side-by-side comparison</p>
+              {a && b ? (
+                <div className="mt-2 overflow-hidden rounded-md border border-slate-100">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-slate-50">
+                      <tr className="text-slate-600">
+                        <th className="px-2 py-1 text-left font-semibold">Metric</th>
+                        <th className="px-2 py-1 text-left font-semibold" style={{ color: a.color }}>{a.label}</th>
+                        <th className="px-2 py-1 text-left font-semibold" style={{ color: b.color }}>{b.label}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-slate-100">
+                        <td className="px-2 py-1 text-slate-600">Issues (lower is better)</td>
+                        <td className="px-2 py-1">{a.issues} {metricCmp("issues", true) === "a" ? "▲ better" : metricCmp("issues", true) === "tie" ? "—" : ""}</td>
+                        <td className="px-2 py-1">{b.issues} {metricCmp("issues", true) === "b" ? "▲ better" : metricCmp("issues", true) === "tie" ? "—" : ""}</td>
+                      </tr>
+                      <tr className="border-t border-slate-100">
+                        <td className="px-2 py-1 text-slate-600">Open data points (higher is better)</td>
+                        <td className="px-2 py-1">{a.openData} {metricCmp("openData", false) === "a" ? "▲ better" : metricCmp("openData", false) === "tie" ? "—" : ""}</td>
+                        <td className="px-2 py-1">{b.openData} {metricCmp("openData", false) === "b" ? "▲ better" : metricCmp("openData", false) === "tie" ? "—" : ""}</td>
+                      </tr>
+                      <tr className="border-t border-slate-100">
+                        <td className="px-2 py-1 text-slate-600">Active citizens (higher is better)</td>
+                        <td className="px-2 py-1">{a.activeCitizens} {metricCmp("activeCitizens", false) === "a" ? "▲ better" : metricCmp("activeCitizens", false) === "tie" ? "—" : ""}</td>
+                        <td className="px-2 py-1">{b.activeCitizens} {metricCmp("activeCitizens", false) === "b" ? "▲ better" : metricCmp("activeCitizens", false) === "tie" ? "—" : ""}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  {compareMetrics.map((m) => (
+                    <div key={m.areaId} className="rounded-md border border-slate-100 px-2 py-2">
+                      <p className="text-xs font-semibold" style={{ color: m.color }}>{m.label}</p>
+                      <p className="text-[11px] text-slate-600">Issues: {m.issues}</p>
+                      <p className="text-[11px] text-slate-600">Open data points: {m.openData}</p>
+                      <p className="text-[11px] text-slate-600">Active citizens: {m.activeCitizens}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </aside>
+    );
+  }
 
   if (!displayWard && !selectedAction) {
     return (
@@ -390,6 +553,17 @@ function Sidebar({
             >
               Contact office
             </a>
+            <div className="mt-3 rounded-lg border border-sky-100 bg-white px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+                Applicable boundaries
+              </p>
+              <div className="mt-1 space-y-1 text-[11px] text-slate-600">
+                <p>🏤 BBMP Ward: {displayWard.name}</p>
+                <p>🏤 BBMP Zone: Central Zone (simulated)</p>
+                <p>💡 BESCOM Subdivision: Local subdivision (simulated)</p>
+                <p>💧 BWSSB Service Station: Local station (simulated)</p>
+              </div>
+            </div>
           </section>
         )}
 
@@ -407,10 +581,17 @@ function Sidebar({
                       : "border-slate-200 bg-white text-slate-500"
                   }`}
                 >
-                  {tab === "issues" ? "Issues" : tab === "open_data" ? "Open data" : "Active citizens"}
+                  {tab === "issues" ? "Issues (citizen reports)" : tab === "open_data" ? "Open data (public records)" : "Active citizens"}
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-slate-500">
+              {signalsTab === "issues"
+                ? "Issues = resident-reported local problems."
+                : signalsTab === "open_data"
+                  ? "Open data = published civic records/events captured in this area."
+                  : "Active citizens = local volunteers/champions who can help."}
+            </p>
 
             {signalsTab === "issues" && (
               <div className="space-y-2">
@@ -477,7 +658,7 @@ function Sidebar({
 
         {mode === "solution_finder" && (
           <section className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-3 md:px-4 md:py-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white">
                   <Lightbulb className="h-3.5 w-3.5" />
@@ -487,8 +668,30 @@ function Sidebar({
                   <p className="text-xs text-emerald-900/70">Local + knowledge base solutions with verification.</p>
                 </div>
               </div>
+              <div className="flex rounded-full border border-emerald-200 bg-white p-0.5 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setSolutionsViewMode("text")}
+                  className={`rounded-full px-2 py-0.5 ${solutionsViewMode === "text" ? "bg-emerald-50 text-emerald-700" : "text-slate-500"}`}
+                >
+                  Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSolutionsViewMode("map")}
+                  className={`rounded-full px-2 py-0.5 ${solutionsViewMode === "map" ? "bg-emerald-50 text-emerald-700" : "text-slate-500"}`}
+                >
+                  Map
+                </button>
+              </div>
             </div>
-            <div className="space-y-2">
+            {solutionsViewMode === "map" && (
+              <p className="rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs text-emerald-800">
+                Map now shows solution-relevant data points{activeCategory !== "All" ? ` for ${activeCategory}` : ""}. Click markers to inspect details.
+              </p>
+            )}
+            {solutionsViewMode === "text" && (
+              <div className="space-y-2">
                 {solutionsForPanel.map((item, i) => {
                   const meta = getVerification(item);
                   const rawTitle = item.type === "ward" ? item.sol.issue : item.sol.title;
@@ -515,7 +718,8 @@ function Sidebar({
                 {solutionsForPanel.length === 0 && (
                   <p className="text-xs text-slate-400">No solutions recorded for this area yet.</p>
                 )}
-            </div>
+              </div>
+            )}
           </section>
         )}
       </div>
@@ -569,6 +773,86 @@ export default function Home() {
   const [flyToCenter, setFlyToCenter] = useState<[number, number] | null>(null);
   const [forceSidebarView, setForceSidebarView] = useState<SidebarMode | null>(null);
   const [forceSidebarCategory, setForceSidebarCategory] = useState<Category | "All" | null>(null);
+  const [solutionsMapFilter, setSolutionsMapFilter] = useState<Category | "All" | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareAreas, setCompareAreas] = useState<CompareArea[]>([]);
+  const [compareResetToken, setCompareResetToken] = useState(0);
+  const [locationQuery, setLocationQuery] = useState("");
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  const openSampleLocality = () => {
+    const w = wards[0];
+    if (!w) return;
+    setSelectedWard({ id: w.id, name: w.name });
+    setSelectedAction(null);
+    setForceSidebarView("area_brief");
+    setFlyToCenter([w.latitude, w.longitude]);
+    setTimeout(() => setFlyToCenter(null), 2000);
+  };
+
+  const selectLocation = (lat: number, lng: number, label?: string) => {
+    const nearest = nearestWardFor(lat, lng, wards);
+    if (nearest) {
+      setSelectedWard({ id: nearest.id, name: nearest.name });
+      setSelectedAction(null);
+      setForceSidebarView("area_brief");
+      setAskReply(label ? `${label} selected. Nearest ward: ${nearest.name}.` : `Nearest ward: ${nearest.name}.`);
+    } else {
+      setAskReply(label ? `${label} selected.` : "Location selected.");
+    }
+    setFlyToCenter([lat, lng]);
+    setTimeout(() => setFlyToCenter(null), 2000);
+  };
+
+  const handleUseMyLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setAskReply("Location is not available in this browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        selectLocation(lat, lng, "Using your location");
+      },
+      () => setAskReply("Unable to access your location. Check browser permissions.")
+    );
+  };
+
+  useEffect(() => {
+    const q = locationQuery.trim();
+    if (q.length < 3) {
+      setLocationSuggestions([]);
+      return;
+    }
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        setLocationLoading(true);
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5`;
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        if (!res.ok) {
+          setLocationSuggestions([]);
+          return;
+        }
+        const data: unknown = await res.json();
+        setLocationSuggestions(Array.isArray(data) ? (data as LocationSuggestion[]) : []);
+      } catch {
+        setLocationSuggestions([]);
+      } finally {
+        setLocationLoading(false);
+      }
+    };
+    const t = setTimeout(run, 300);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [locationQuery]);
 
   const handleAsk = () => {
     const q = askInput.trim();
@@ -628,6 +912,31 @@ export default function Home() {
     }
   };
 
+  const compareMetrics: CompareMetric[] = useMemo(() => {
+    if (!compareMode || compareAreas.length === 0) return [];
+    return compareAreas.map((area) => {
+      const inAreaActions = actions.filter((a) => {
+        if (typeof a.latitude !== "number" || typeof a.longitude !== "number") return false;
+        return booleanPointInPolygon(point([a.longitude, a.latitude]), area.geometry as any);
+      });
+      const inAreaWards = wards.filter((w) => {
+        if (typeof w.latitude !== "number" || typeof w.longitude !== "number") return false;
+        return booleanPointInPolygon(point([w.longitude, w.latitude]), area.geometry as any);
+      });
+      const issues = inAreaWards.reduce((acc, w) => acc + (w.issues?.length ?? 0), 0) + inAreaActions.length;
+      const openData = inAreaActions.length;
+      const activeCitizens = inAreaWards.reduce((acc, w) => acc + (w.local_champions?.length ?? 0), 0);
+      return {
+        areaId: area.id,
+        label: area.label,
+        color: area.color,
+        issues,
+        openData,
+        activeCitizens,
+      };
+    });
+  }, [compareMode, compareAreas, actions, wards]);
+
   return (
     <div className="min-h-screen flex flex-col bg-sky-50">
       <header className="border-b border-sky-100 bg-white/80 backdrop-blur">
@@ -673,6 +982,89 @@ export default function Home() {
               <span>For city officials & citizens</span>
             </div>
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-sky-100 bg-sky-50/60 px-3 py-2">
+            <p className="text-xs font-semibold text-sky-700">Choose location:</p>
+            <button
+              type="button"
+              onClick={() => {
+                setCompareMode((v) => !v);
+                setCompareAreas([]);
+                setAskReply(
+                  compareMode
+                    ? "Compare mode turned off."
+                    : "Compare mode on: draw up to 2 areas on the map (polygon or rectangle)."
+                );
+              }}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                compareMode ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-sky-200 bg-white text-sky-700"
+              }`}
+            >
+              {compareMode ? "Exit compare mode" : "Compare areas"}
+            </button>
+            <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
+              <input
+                type="text"
+                value={locationQuery}
+                onChange={(e) => setLocationQuery(e.target.value)}
+                placeholder="Search by address/locality"
+                className="w-full rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[11px] text-slate-700 placeholder:text-slate-400"
+              />
+              {locationLoading && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">...</span>
+              )}
+              {locationSuggestions.length > 0 && (
+                <div className="absolute z-[1200] mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-sky-100 bg-white shadow-lg">
+                  {locationSuggestions.map((s, i) => (
+                    <button
+                      key={`${s.lat}-${s.lon}-${i}`}
+                      type="button"
+                      onClick={() => {
+                        setLocationQuery(s.display_name);
+                        setLocationSuggestions([]);
+                        selectLocation(Number(s.lat), Number(s.lon), "Address");
+                      }}
+                      className="block w-full border-b border-slate-100 px-3 py-2 text-left text-[11px] text-slate-700 hover:bg-sky-50"
+                    >
+                      {s.display_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={openSampleLocality}
+              className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-medium text-sky-700"
+            >
+              Open sample locality
+            </button>
+            <button
+              type="button"
+              onClick={handleUseMyLocation}
+              className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] font-medium text-sky-700"
+            >
+              <LocateFixed className="h-3 w-3" />
+              Use my location
+            </button>
+            <select
+              onChange={(e) => {
+                const ward = wards.find((w) => w.id === e.target.value);
+                if (!ward) return;
+                setSelectedWard({ id: ward.id, name: ward.name });
+                setSelectedAction(null);
+                setForceSidebarView("area_brief");
+                setFlyToCenter([ward.latitude, ward.longitude]);
+                setTimeout(() => setFlyToCenter(null), 2000);
+              }}
+              className="rounded-full border border-sky-200 bg-white px-2.5 py-1 text-[11px] text-slate-700"
+              defaultValue=""
+            >
+              <option value="" disabled>Pick boundary (ward)</option>
+              {wards.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </div>
           {askReply != null && (
             <p className="mt-2 text-xs text-slate-600 border-t border-sky-100 pt-2">
               {askReply}
@@ -690,6 +1082,10 @@ export default function Home() {
             selectedWardId={selectedWard?.id ?? null}
             selectedActionId={selectedAction?.id ?? null}
             flyTo={flyToCenter}
+            solutionCategoryFilter={solutionsMapFilter}
+            compareMode={compareMode}
+            compareResetToken={compareResetToken}
+            onCompareAreasChange={setCompareAreas}
             onWardClick={handleMarkerClick}
             onActionClick={handleActionClick}
           />
@@ -701,13 +1097,20 @@ export default function Home() {
           wardDetailsMap={wardDetailsMap}
           forumSolutions={forumSolutions}
           actions={actions}
-          onPickSample={() => {
-            const w = wards[0];
-            if (!w) return;
-            setSelectedWard({ id: w.id, name: w.name });
-            setSelectedAction(null);
-            setFlyToCenter([w.latitude, w.longitude]);
-            setTimeout(() => setFlyToCenter(null), 2000);
+          onPickSample={openSampleLocality}
+          onSolutionsMapFilterChange={setSolutionsMapFilter}
+          compareMode={compareMode}
+          compareAreas={compareAreas}
+          compareMetrics={compareMetrics}
+          onExitCompareMode={() => {
+            setCompareMode(false);
+            setCompareAreas([]);
+            setAskReply("Compare mode turned off.");
+          }}
+          onResetCompareAreas={() => {
+            setCompareAreas([]);
+            setCompareResetToken((v) => v + 1);
+            setAskReply("Drawings cleared. Draw Area A and Area B again.");
           }}
           loading={wardsLoading}
           selectionType={selectedAction ? "action" : selectedWard ? "ward" : null}
