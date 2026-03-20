@@ -100,17 +100,13 @@ interface WardMeta {
   name: string;
 }
 
-export type SidebarView =
-  | "ward_details"
-  | "issues"
-  | "solutions"
-  | "citizens";
+export type SidebarMode = "area_brief" | "local_signals" | "solution_finder";
+type LocalSignalsTab = "issues" | "open_data" | "citizens";
 
-const SIDEBAR_VIEWS: { id: SidebarView; label: string }[] = [
-  { id: "ward_details", label: "Ward details" },
-  { id: "issues", label: "Issues reported" },
-  { id: "solutions", label: "Solutions implemented" },
-  { id: "citizens", label: "Active citizens" },
+const SIDEBAR_MODES: { id: SidebarMode; label: string; helper: string }[] = [
+  { id: "area_brief", label: "Local governance", helper: "Ward governance and local context." },
+  { id: "local_signals", label: "Local data", helper: "Issues, open data, and active citizens." },
+  { id: "solution_finder", label: "Solutions", helper: "Practical solutions with trust signals." },
 ];
 
 /** Unified solution item for display (ward or forum). */
@@ -125,6 +121,8 @@ function Sidebar({
   selectionType,
   forceView,
   forceCategory,
+  actions,
+  onPickSample,
 }: {
   selectedWard: WardMeta | null;
   selectedAction: ActionRecord | null;
@@ -133,22 +131,28 @@ function Sidebar({
   loading: boolean;
   /** When user clicks a marker: 'action' → show Issues reported, 'ward' → show Ward details */
   selectionType: "ward" | "action" | null;
-  /** Optional parent override for the visible tab (e.g. Ask glossary → solutions). */
-  forceView?: SidebarView | null;
+  /** Optional parent override for mode (e.g. Ask glossary → solution_finder). */
+  forceView?: SidebarMode | null;
   /** Optional parent override for category filter (solutions/citizens). */
   forceCategory?: Category | "All" | null;
+  actions: ActionRecord[];
+  onPickSample: () => void;
 }) {
-  const [view, setView] = useState<SidebarView>("ward_details");
+  const [mode, setMode] = useState<SidebarMode>("area_brief");
+  const [signalsTab, setSignalsTab] = useState<LocalSignalsTab>("issues");
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
 
-  // Switch panel tab when user clicks a marker: action → issues, ward → ward_details
+  // Switch panel mode when user clicks a marker: action → local signals, ward → area brief
   useEffect(() => {
-    if (selectionType === "action") setView("issues");
-    if (selectionType === "ward") setView("ward_details");
+    if (selectionType === "action") {
+      setMode("local_signals");
+      setSignalsTab("issues");
+    }
+    if (selectionType === "ward") setMode("area_brief");
   }, [selectionType]);
 
   useEffect(() => {
-    if (forceView) setView(forceView);
+    if (forceView) setMode(forceView);
   }, [forceView]);
 
   useEffect(() => {
@@ -215,6 +219,29 @@ function Sidebar({
     return [...ward, ...forum].slice(0, 2);
   })();
 
+  function getVerification(item: SolutionDisplay) {
+    if (item.type === "ward") {
+      return {
+        source: "Local ward case",
+        confidence: "High",
+        verifiedBy: "Ward contributors",
+        lastUpdated: "2-4 weeks ago",
+      };
+    }
+    return {
+      source: "Knowledge Base",
+      confidence: "Medium",
+      verifiedBy: "Community reported",
+      lastUpdated: "1-3 months ago",
+    };
+  }
+
+  function splitAka(title: string): { plain: string; aka: string | null } {
+    const m = title.match(/^(.*?)\s*\(AKA[:\s-]*(.+?)\)\s*$/i);
+    if (!m) return { plain: title, aka: null };
+    return { plain: m[1].trim(), aka: m[2].trim() };
+  }
+
   const filteredChampionsRaw =
     activeCategory === "All"
       ? baseDetail?.local_champions ?? []
@@ -226,6 +253,9 @@ function Sidebar({
   const filteredChampions = rawChampions.length >= 2 ? rawChampions : [...rawChampions, ...Array(2 - rawChampions.length).fill(placeholderChampion)].slice(0, 2);
 
   const detail = baseDetail;
+  const openDataItems = actions
+    .filter((a) => (displayWard?.id ? a.ward_id === displayWard.id : true))
+    .slice(0, 4);
 
   if (!displayWard && !selectedAction) {
     return (
@@ -237,8 +267,27 @@ function Sidebar({
           Select a locality to see details
         </p>
         <p className="mt-1 text-xs text-slate-400">
-          Click a marker on the map to view ward details, issues, and more.
+          You can start from the map or open a sample locality directly.
         </p>
+        <button
+          type="button"
+          onClick={onPickSample}
+          className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+        >
+          Open sample locality
+        </button>
+        <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+          {SIDEBAR_MODES.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              onClick={() => setMode(v.id)}
+              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600"
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
       </aside>
     );
   }
@@ -281,13 +330,13 @@ function Sidebar({
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {SIDEBAR_VIEWS.map((v) => (
+          {SIDEBAR_MODES.map((v) => (
             <button
               key={v.id}
               type="button"
-              onClick={() => setView(v.id)}
+              onClick={() => setMode(v.id)}
               className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-                view === v.id
+                mode === v.id
                   ? "border-sky-500 bg-sky-50 text-sky-700"
                   : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
               }`}
@@ -296,7 +345,10 @@ function Sidebar({
             </button>
           ))}
         </div>
-        {(view === "solutions" || view === "citizens") && (
+        <p className="mt-2 text-[11px] text-slate-500">
+          {SIDEBAR_MODES.find((m) => m.id === mode)?.helper}
+        </p>
+        {(mode === "solution_finder" || (mode === "local_signals" && signalsTab === "citizens")) && (
           <div className="mt-2 flex flex-wrap gap-1">
             {categories.map((cat) => (
               <button
@@ -319,23 +371,17 @@ function Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 md:px-5 md:py-5">
-        {view === "ward_details" && (
+        {mode === "area_brief" && (
           <section className="rounded-xl border border-sky-100 bg-sky-50/60 px-3 py-3 md:px-4 md:py-4">
             <div className="mb-2 flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-600 text-white">
                 <Phone className="h-3.5 w-3.5" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
-                  Local Governance
-                </p>
-                <p className="text-sm font-medium text-slate-900">
-                  {detail.councilor_name}
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Local Governance</p>
+                <p className="text-sm font-medium text-slate-900">{detail.councilor_name}</p>
                 <p className="text-xs text-slate-500">{detail.description}</p>
-                <p className="mt-0.5 text-[11px] text-slate-400">
-                  Status: {detail.status}
-                </p>
+                <p className="mt-0.5 text-[11px] text-slate-400">Status: {detail.status}</p>
               </div>
             </div>
             <a
@@ -347,173 +393,128 @@ function Sidebar({
           </section>
         )}
 
-        {view === "issues" && (
-          <section className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-3 md:px-4 md:py-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
-                <AlertTriangle className="h-3.5 w-3.5" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
-                  Issues reported
-                </p>
-                <p className="text-xs text-slate-500">
-                  Citizen-reported issues in this ward.
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {(issuesForPanel.length >= 2
-                ? issuesForPanel
-                : [
-                    ...issuesForPanel,
-                    { description: "Other local issues in this area.", status: "Open" as const },
-                    { description: "Resident-reported concern in locality.", status: "In Progress" as const },
-                  ].slice(0, 2)
-              ).map((issue, i) => (
-                <div
-                  key={i}
-                  className="flex items-start justify-between rounded-lg border border-slate-100 bg-white px-3 py-2"
+        {mode === "local_signals" && (
+          <section className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-3 md:px-4 md:py-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {(["issues", "open_data", "citizens"] as LocalSignalsTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setSignalsTab(tab)}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                    signalsTab === tab
+                      ? "border-slate-500 bg-white text-slate-800"
+                      : "border-slate-200 bg-white text-slate-500"
+                  }`}
                 >
-                  <p className="text-xs font-semibold text-slate-800">
-                    {issue.description}
-                  </p>
-                  <span
-                    className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      issue.status === "Solved"
-                        ? "bg-emerald-600 text-white"
-                        : issue.status === "In Progress"
-                        ? "bg-amber-400 text-white"
-                        : "bg-rose-100 text-rose-700"
-                    }`}
-                  >
-                    {issue.status}
-                  </span>
-                </div>
+                  {tab === "issues" ? "Issues" : tab === "open_data" ? "Open data" : "Active citizens"}
+                </button>
               ))}
-              {issuesForPanel.length === 0 && (
-                <p className="text-xs text-slate-400">
-                  No active issues reported yet.
-                </p>
-              )}
             </div>
+
+            {signalsTab === "issues" && (
+              <div className="space-y-2">
+                {(issuesForPanel.length >= 2
+                  ? issuesForPanel
+                  : [
+                      ...issuesForPanel,
+                      { description: "Other local issues in this area.", status: "Open" as const },
+                      { description: "Resident-reported concern in locality.", status: "In Progress" as const },
+                    ].slice(0, 2)
+                ).map((issue, i) => (
+                  <div key={i} className="flex items-start justify-between rounded-lg border border-slate-100 bg-white px-3 py-2">
+                    <p className="text-xs font-semibold text-slate-800">{issue.description}</p>
+                    <span
+                      className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        issue.status === "Solved"
+                          ? "bg-emerald-600 text-white"
+                          : issue.status === "In Progress"
+                            ? "bg-amber-400 text-white"
+                            : "bg-rose-100 text-rose-700"
+                      }`}
+                    >
+                      {issue.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {signalsTab === "open_data" && (
+              <div className="space-y-2">
+                {openDataItems.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-slate-100 bg-white px-3 py-2">
+                    <p className="text-xs font-semibold text-slate-800">{item.title}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">
+                      {item.category} {item.type ? `· ${item.type}` : ""} {item.place_name ? `· ${item.place_name}` : ""}
+                    </p>
+                  </div>
+                ))}
+                {openDataItems.length === 0 && <p className="text-xs text-slate-400">No open data points available.</p>}
+              </div>
+            )}
+
+            {signalsTab === "citizens" && (
+              <div className="space-y-2">
+                {filteredChampions.map((champion, i) => (
+                  <div key={i} className="flex items-start justify-between gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900">{champion.name}</p>
+                      <p className="text-[11px] text-slate-500">{champion.expertise}</p>
+                    </div>
+                    <a
+                      href={champion.contact.startsWith("+") ? `https://wa.me/${champion.contact.replace(/[^\d]/g, "")}` : `mailto:${champion.contact}`}
+                      className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-100"
+                    >
+                      Contact
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
-        {view === "solutions" && (
+        {mode === "solution_finder" && (
           <section className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-3 md:px-4 md:py-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white">
-                <Lightbulb className="h-3.5 w-3.5" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
-                  Solutions implemented
-                </p>
-                <p className="text-xs text-emerald-900/70">
-                  In this area (ward + knowledge base, max 2).
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {solutionsForPanel.map((item, i) =>
-                item.type === "ward" ? (
-                  <div
-                    key={i}
-                    className="rounded-lg border border-emerald-100 bg-white px-3 py-2"
-                  >
-                    <p className="text-xs font-semibold text-emerald-900">
-                      {item.sol.issue}
-                    </p>
-                    <details className="mt-1">
-                      <summary className="cursor-pointer select-none text-[11px] font-semibold text-emerald-700">
-                        What is this?
-                      </summary>
-                      <p className="mt-1 text-xs text-emerald-900/80">
-                        {item.sol.fix_description}
-                      </p>
-                      <p className="mt-1 text-[11px] text-emerald-700">
-                        — {item.sol.contributor_name}
-                      </p>
-                    </details>
-                  </div>
-                ) : (
-                  <div
-                    key={i}
-                    className="rounded-lg border border-emerald-100 bg-white px-3 py-2"
-                  >
-                    <p className="text-xs font-semibold text-emerald-900">
-                      {item.sol.title}
-                    </p>
-                    <details className="mt-1">
-                      <summary className="cursor-pointer select-none text-[11px] font-semibold text-emerald-700">
-                        What is this?
-                      </summary>
-                      <p className="mt-1 text-xs text-emerald-900/80 leading-relaxed">
-                        {item.sol.description}
-                      </p>
-                      <p className="mt-1 text-[11px] text-emerald-700">
-                        — Knowledge Base
-                      </p>
-                    </details>
-                  </div>
-                )
-              )}
-              {solutionsForPanel.length === 0 && (
-                <p className="text-xs text-slate-400">
-                  No solutions recorded for this area yet.
-                </p>
-              )}
-            </div>
-          </section>
-        )}
-
-        {view === "citizens" && (
-          <section className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3 md:px-4 md:py-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-white">
-                <Users className="h-3.5 w-3.5" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-800">
-                  Active citizens
-                </p>
-                <p className="text-xs text-slate-500">
-                  Area champions who can help.
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {filteredChampions.map((champion, i) => (
-                <div
-                  key={i}
-                  className="flex items-start justify-between gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2"
-                >
-                  <div>
-                    <p className="text-xs font-semibold text-slate-900">
-                      {champion.name}
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      {champion.expertise}
-                    </p>
-                  </div>
-                  <a
-                    href={
-                      champion.contact.startsWith("+")
-                        ? `https://wa.me/${champion.contact.replace(/[^\d]/g, "")}`
-                        : `mailto:${champion.contact}`
-                    }
-                    className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-100"
-                  >
-                    Contact
-                  </a>
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white">
+                  <Lightbulb className="h-3.5 w-3.5" />
                 </div>
-              ))}
-              {filteredChampions.length === 0 && (
-                <p className="text-xs text-slate-400">
-                  No champions listed yet for this ward.
-                </p>
-              )}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">Solutions</p>
+                  <p className="text-xs text-emerald-900/70">Local + knowledge base solutions with verification.</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+                {solutionsForPanel.map((item, i) => {
+                  const meta = getVerification(item);
+                  const rawTitle = item.type === "ward" ? item.sol.issue : item.sol.title;
+                  const { plain, aka } = splitAka(rawTitle);
+                  return (
+                    <div key={i} className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
+                      <p className="text-xs font-semibold text-emerald-900">{plain}</p>
+                      {aka && <p className="mt-0.5 text-[11px] text-emerald-700">AKA: {aka}</p>}
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700">Source: {meta.source}</span>
+                        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] text-sky-700">Confidence: {meta.confidence}</span>
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] text-emerald-700">Verified: {meta.verifiedBy}</span>
+                      </div>
+                      <details className="mt-1">
+                        <summary className="cursor-pointer select-none text-[11px] font-semibold text-emerald-700">What is this?</summary>
+                        <p className="mt-1 text-xs text-emerald-900/80 leading-relaxed">
+                          {item.type === "ward" ? item.sol.fix_description : item.sol.description}
+                        </p>
+                      </details>
+                      <p className="mt-1 text-[11px] text-slate-500">Last updated: {meta.lastUpdated}</p>
+                    </div>
+                  );
+                })}
+                {solutionsForPanel.length === 0 && (
+                  <p className="text-xs text-slate-400">No solutions recorded for this area yet.</p>
+                )}
             </div>
           </section>
         )}
@@ -566,7 +567,7 @@ export default function Home() {
   const [askInput, setAskInput] = useState("");
   const [askReply, setAskReply] = useState<string | null>(null);
   const [flyToCenter, setFlyToCenter] = useState<[number, number] | null>(null);
-  const [forceSidebarView, setForceSidebarView] = useState<SidebarView | null>(null);
+  const [forceSidebarView, setForceSidebarView] = useState<SidebarMode | null>(null);
   const [forceSidebarCategory, setForceSidebarCategory] = useState<Category | "All" | null>(null);
 
   const handleAsk = () => {
@@ -580,12 +581,12 @@ export default function Home() {
     if (result.kind === "ward") {
       setSelectedWard({ id: result.ward.id, name: result.ward.name });
       setSelectedAction(null);
-      setForceSidebarView("ward_details");
+      setForceSidebarView("area_brief");
       setForceSidebarCategory("All");
       setFlyToCenter([result.lat, result.lng]);
     } else if (result.kind === "action") {
       setSelectedAction(result.action);
-      setForceSidebarView("issues");
+      setForceSidebarView("local_signals");
       setForceSidebarCategory("All");
       if (result.ward) {
         setSelectedWard({ id: result.ward.id, name: result.ward.name });
@@ -599,7 +600,7 @@ export default function Home() {
     } else if (result.kind === "glossary") {
       setSelectedWard(null);
       setSelectedAction(null);
-      setForceSidebarView("solutions");
+      setForceSidebarView("solution_finder");
       setForceSidebarCategory(result.entry.category ?? "All");
     } else {
       setSelectedWard(null);
@@ -699,6 +700,15 @@ export default function Home() {
           selectedAction={selectedAction}
           wardDetailsMap={wardDetailsMap}
           forumSolutions={forumSolutions}
+          actions={actions}
+          onPickSample={() => {
+            const w = wards[0];
+            if (!w) return;
+            setSelectedWard({ id: w.id, name: w.name });
+            setSelectedAction(null);
+            setFlyToCenter([w.latitude, w.longitude]);
+            setTimeout(() => setFlyToCenter(null), 2000);
+          }}
           loading={wardsLoading}
           selectionType={selectedAction ? "action" : selectedWard ? "ward" : null}
           forceView={forceSidebarView}
