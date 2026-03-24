@@ -4,15 +4,25 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   Phone,
-  AlertTriangle,
   Lightbulb,
-  Users,
   MapPin,
   MapPinned,
   MessageCircle,
   Send,
   LocateFixed,
+  ExternalLink,
+  ShieldCheck,
+  Info,
 } from "lucide-react";
+import { AboutModal } from "@/components/AboutModal";
+import {
+  fetchPromises,
+  type CivicPromiseRecord,
+} from "@/services/promises";
+import {
+  fetchWardContacts,
+  type WardContactRecord,
+} from "@/services/wardContacts";
 import {
   fetchWards,
   type Category,
@@ -148,11 +158,24 @@ type LocationSuggestion = { display_name: string; lat: string; lon: string };
 /** Unified solution item for display (ward or forum). */
 type SolutionDisplay = { type: "ward"; sol: ProvenSolutionRecord } | { type: "forum"; sol: ForumSolution };
 
+type VerificationLevel = "official_dataset" | "community_documented" | "knowledge_base";
+
+type VerificationMeta = {
+  level: VerificationLevel;
+  headline: string;
+  detail: string;
+  sourceUrl?: string;
+  sourceLabel?: string;
+  lastUpdated: string;
+};
+
 function Sidebar({
   selectedWard,
   selectedAction,
   wardDetailsMap,
   forumSolutions,
+  promises,
+  wardContactsByWardId,
   loading,
   selectionType,
   forceView,
@@ -170,6 +193,8 @@ function Sidebar({
   selectedAction: ActionRecord | null;
   wardDetailsMap: Record<string, WardRecord> | null;
   forumSolutions: ForumSolution[];
+  promises: CivicPromiseRecord[];
+  wardContactsByWardId: Record<string, WardContactRecord> | null;
   loading: boolean;
   /** When user clicks a marker: 'action' → show Issues reported, 'ward' → show Ward details */
   selectionType: "ward" | "action" | null;
@@ -276,21 +301,75 @@ function Sidebar({
     return [...ward, ...forum].slice(0, 2);
   })();
 
-  function getVerification(item: SolutionDisplay) {
+  function getVerification(item: SolutionDisplay): VerificationMeta {
     if (item.type === "ward") {
+      const sol = item.sol;
+      const level: VerificationLevel = sol.verification_level ?? "community_documented";
+      const headlines: Record<VerificationLevel, string> = {
+        official_dataset: "Official / dataset",
+        community_documented: "Community documented",
+        knowledge_base: "Knowledge base pattern",
+      };
       return {
-        source: "Local ward case",
-        confidence: "High",
-        verifiedBy: "Ward contributors",
-        lastUpdated: "2-4 weeks ago",
+        level,
+        headline: headlines[level],
+        detail:
+          level === "official_dataset"
+            ? "Tied to an official or structured source when you add the link."
+            : level === "community_documented"
+              ? "Documented by ward contributors or RWAs — confirm locally before relying on it."
+              : "General pattern; validate in your ward.",
+        sourceUrl: sol.source_url,
+        sourceLabel: sol.source_label ?? sol.contributor_name,
+        lastUpdated: sol.last_updated ?? "Set last_updated in ward data",
       };
     }
     return {
-      source: "Knowledge Base",
-      confidence: "Medium",
-      verifiedBy: "Community reported",
-      lastUpdated: "1-3 months ago",
+      level: "knowledge_base",
+      headline: "Knowledge base",
+      detail: "Reusable pattern from the community KB — not verified for this ward unless cited.",
+      sourceUrl: undefined,
+      sourceLabel: "Forum KB",
+      lastUpdated: "Varies by topic",
     };
+  }
+
+  const verificationBadgeClass: Record<VerificationLevel, string> = {
+    official_dataset: "border-blue-200 bg-blue-50 text-blue-900",
+    community_documented: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    knowledge_base: "border-amber-200 bg-amber-50 text-amber-900",
+  };
+
+  const wardContactOverride =
+    displayWard && wardContactsByWardId
+      ? wardContactsByWardId[displayWard.id] ?? null
+      : null;
+
+  const promisesForPanel = displayWard
+    ? promises.filter((p) => p.ward_id === null || p.ward_id === displayWard.id)
+    : [];
+
+  const primaryOfficePhone =
+    wardContactOverride?.ward_office_phone?.replace(/\s/g, "") ||
+    baseDetail?.councilor_contact?.replace(/\s/g, "") ||
+    "";
+  const canCallOffice =
+    primaryOfficePhone.length > 0 && primaryOfficePhone !== "—" && /^[+\d]/.test(primaryOfficePhone);
+  const officeEmail = wardContactOverride?.ward_office_email;
+
+  function promiseStatusStyle(s: CivicPromiseRecord["status"]) {
+    switch (s) {
+      case "completed":
+        return "bg-emerald-100 text-emerald-800";
+      case "in_progress":
+        return "bg-amber-100 text-amber-800";
+      case "reported":
+        return "bg-slate-100 text-slate-700";
+      case "unclear":
+        return "bg-rose-50 text-rose-800";
+      default:
+        return "bg-slate-100 text-slate-600";
+    }
   }
 
   function splitAka(title: string): { plain: string; aka: string | null } {
@@ -535,35 +614,188 @@ function Sidebar({
 
       <div className="flex-1 overflow-y-auto px-4 py-4 md:px-5 md:py-5">
         {mode === "area_brief" && (
-          <section className="rounded-xl border border-sky-100 bg-sky-50/60 px-3 py-3 md:px-4 md:py-4">
-            <div className="mb-2 flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-600 text-white">
-                <Phone className="h-3.5 w-3.5" />
+          <section className="space-y-3">
+            <div className="rounded-xl border border-sky-100 bg-sky-50/60 px-3 py-3 md:px-4 md:py-4">
+              <div className="mb-2 flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-600 text-white">
+                  <Phone className="h-3.5 w-3.5" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Local governance</p>
+                  <p className="text-sm font-medium text-slate-900">{detail.councilor_name}</p>
+                  <p className="text-xs text-slate-500">{detail.description}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">Status: {detail.status}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Local Governance</p>
-                <p className="text-sm font-medium text-slate-900">{detail.councilor_name}</p>
-                <p className="text-xs text-slate-500">{detail.description}</p>
-                <p className="mt-0.5 text-[11px] text-slate-400">Status: {detail.status}</p>
+              <div className="flex flex-col gap-2">
+                {canCallOffice ? (
+                  <a
+                    href={`tel:${primaryOfficePhone}`}
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700"
+                  >
+                    {wardContactOverride?.ward_office_phone ? "Call ward office" : "Contact council office"}
+                  </a>
+                ) : officeEmail ? (
+                  <a
+                    href={`mailto:${officeEmail}`}
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700"
+                  >
+                    Email ward office
+                  </a>
+                ) : (
+                  <p className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                    Add a phone or email in <code className="rounded bg-white px-1">ward_contacts.json</code> for this
+                    ward.
+                  </p>
+                )}
+                {officeEmail && canCallOffice && (
+                  <a
+                    href={`mailto:${officeEmail}`}
+                    className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
+                  >
+                    Email ward office
+                  </a>
+                )}
               </div>
             </div>
-            <a
-              href={`tel:${detail.councilor_contact.replace(/\s/g, "")}`}
-              className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700"
-            >
-              Contact office
-            </a>
-            <div className="mt-3 rounded-lg border border-sky-100 bg-white px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">
-                Applicable boundaries
-              </p>
+
+            {wardContactOverride && (
+              <div className="rounded-xl border border-slate-200 bg-white px-3 py-3 md:px-4 md:py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">Responsibility (JSON)</p>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Contacts below are loaded from <code className="rounded bg-slate-100 px-1">ward_contacts.json</code> —
+                  verify before publishing.
+                </p>
+                <ul className="mt-2 space-y-1.5 text-[11px] text-slate-700">
+                  {wardContactOverride.corporation && (
+                    <li>
+                      <span className="font-semibold text-slate-800">Corporation: </span>
+                      {wardContactOverride.corporation}
+                    </li>
+                  )}
+                  {wardContactOverride.zone_name && (
+                    <li>
+                      <span className="font-semibold text-slate-800">Zone: </span>
+                      {wardContactOverride.zone_name}
+                      {wardContactOverride.zone_office_phone && (
+                        <span className="text-slate-500"> · {wardContactOverride.zone_office_phone}</span>
+                      )}
+                    </li>
+                  )}
+                  {wardContactOverride.ward_office_address && (
+                    <li>
+                      <span className="font-semibold text-slate-800">Ward office: </span>
+                      {wardContactOverride.ward_office_address}
+                    </li>
+                  )}
+                  {wardContactOverride.assistant_engineer_name && (
+                    <li>
+                      <span className="font-semibold text-slate-800">Engineering: </span>
+                      {wardContactOverride.assistant_engineer_name}
+                      {wardContactOverride.assistant_engineer_phone && (
+                        <span> · {wardContactOverride.assistant_engineer_phone}</span>
+                      )}
+                    </li>
+                  )}
+                  {wardContactOverride.ward_page_url && (
+                    <li>
+                      <a
+                        href={wardContactOverride.ward_page_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-semibold text-sky-700 hover:underline"
+                      >
+                        Official ward / corporation page <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </li>
+                  )}
+                </ul>
+                {wardContactOverride.data_note && (
+                  <p className="mt-2 text-[10px] text-slate-400">{wardContactOverride.data_note}</p>
+                )}
+              </div>
+            )}
+
+            <div className="rounded-xl border border-sky-100 bg-white px-3 py-3 md:px-4 md:py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">Applicable boundaries</p>
               <div className="mt-1 space-y-1 text-[11px] text-slate-600">
-                <p>🏤 BBMP Ward: {displayWard.name}</p>
-                <p>🏤 BBMP Zone: Central Zone (simulated)</p>
-                <p>💡 BESCOM Subdivision: Local subdivision (simulated)</p>
-                <p>💧 BWSSB Service Station: Local station (simulated)</p>
+                <p>🏛️ Ward: {displayWard.name}</p>
+                {wardContactOverride?.corporation && wardContactOverride?.zone_name ? (
+                  <>
+                    <p>🏛️ {wardContactOverride.corporation}</p>
+                    <p>📍 Zone: {wardContactOverride.zone_name}</p>
+                    {wardContactOverride.bescom_circle && (
+                      <p>💡 BESCOM: {wardContactOverride.bescom_circle}</p>
+                    )}
+                    {wardContactOverride.bwssb_sub_division && (
+                      <p>💧 BWSSB: {wardContactOverride.bwssb_sub_division}</p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p>🏛️ Corporation / zone: add to ward_contacts.json for verified labels.</p>
+                    <p>💡 BESCOM / 💧 BWSSB: add circles in JSON or keep local notes.</p>
+                  </>
+                )}
               </div>
             </div>
+
+            {promisesForPanel.length > 0 && (
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-3 md:px-4 md:py-4">
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-800">
+                      Public commitments (pilot)
+                    </p>
+                    <p className="text-[11px] text-indigo-900/80">
+                      Curated from <code className="rounded bg-white/80 px-1">promises.json</code>. Replace samples with
+                      sourced commitments.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {promisesForPanel.map((p) => (
+                    <article
+                      key={p.id}
+                      className="rounded-lg border border-indigo-100 bg-white px-3 py-2 shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize ${promiseStatusStyle(p.status)}`}
+                        >
+                          {p.status.replace("_", " ")}
+                        </span>
+                        {p.jurisdiction && (
+                          <span className="text-[10px] text-slate-500">{p.jurisdiction}</span>
+                        )}
+                      </div>
+                      <h3 className="mt-1 text-xs font-semibold text-slate-900">{p.title}</h3>
+                      <p className="text-[11px] text-slate-600">{p.summary}</p>
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        Actor: <span className="font-medium text-slate-700">{p.actor}</span>
+                        {p.committed_at && (
+                          <>
+                            {" "}
+                            · Committed: {p.committed_at}
+                          </>
+                        )}
+                      </p>
+                      {p.source_url && (
+                        <a
+                          href={p.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 hover:underline"
+                        >
+                          {p.source_label || "Source"} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -665,7 +897,7 @@ function Sidebar({
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">Solutions</p>
-                  <p className="text-xs text-emerald-900/70">Local + knowledge base solutions with verification.</p>
+                  <p className="text-xs text-emerald-900/70">Trust signals: official, community-documented, or KB pattern.</p>
                 </div>
               </div>
               <div className="flex rounded-full border border-emerald-200 bg-white p-0.5 text-[10px]">
@@ -692,26 +924,57 @@ function Sidebar({
             )}
             {solutionsViewMode === "text" && (
               <div className="space-y-2">
+                <p className="rounded-lg border border-emerald-200/80 bg-white/90 px-2.5 py-2 text-[10px] leading-relaxed text-emerald-900/90">
+                  <strong className="text-emerald-900">Legend:</strong>{" "}
+                  <span className="rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-blue-900">Official</span>{" "}
+                  structured source ·{" "}
+                  <span className="rounded border border-emerald-200 bg-emerald-50 px-1 py-0.5 text-emerald-900">
+                    Community
+                  </span>{" "}
+                  RWA / ward doc ·{" "}
+                  <span className="rounded border border-amber-200 bg-amber-50 px-1 py-0.5 text-amber-900">KB</span>{" "}
+                  reusable pattern — confirm locally.
+                </p>
                 {solutionsForPanel.map((item, i) => {
                   const meta = getVerification(item);
                   const rawTitle = item.type === "ward" ? item.sol.issue : item.sol.title;
                   const { plain, aka } = splitAka(rawTitle);
                   return (
                     <div key={i} className="rounded-lg border border-emerald-100 bg-white px-3 py-2">
-                      <p className="text-xs font-semibold text-emerald-900">{plain}</p>
-                      {aka && <p className="mt-0.5 text-[11px] text-emerald-700">AKA: {aka}</p>}
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700">Source: {meta.source}</span>
-                        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] text-sky-700">Confidence: {meta.confidence}</span>
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] text-emerald-700">Verified: {meta.verifiedBy}</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${verificationBadgeClass[meta.level]}`}
+                        >
+                          {meta.headline}
+                        </span>
+                        <span className="text-[10px] text-slate-500">Updated: {meta.lastUpdated}</span>
                       </div>
-                      <details className="mt-1">
-                        <summary className="cursor-pointer select-none text-[11px] font-semibold text-emerald-700">What is this?</summary>
+                      <p className="mt-1.5 text-xs font-semibold text-emerald-900">{plain}</p>
+                      {aka && <p className="mt-0.5 text-[11px] text-emerald-700">AKA: {aka}</p>}
+                      <p className="mt-1 text-[11px] text-slate-600 leading-relaxed">{meta.detail}</p>
+                      {meta.sourceUrl ? (
+                        <a
+                          href={meta.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-sky-700 hover:underline"
+                        >
+                          {meta.sourceLabel || "View source"} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <p className="mt-1 text-[10px] text-slate-400">
+                          Provenance: {meta.sourceLabel}
+                          {item.type === "ward" && !item.sol.source_url ? " — add source_url in ward data." : ""}
+                        </p>
+                      )}
+                      <details className="mt-2 border-t border-emerald-50 pt-2">
+                        <summary className="cursor-pointer select-none text-[11px] font-semibold text-emerald-700">
+                          Full description
+                        </summary>
                         <p className="mt-1 text-xs text-emerald-900/80 leading-relaxed">
                           {item.type === "ward" ? item.sol.fix_description : item.sol.description}
                         </p>
                       </details>
-                      <p className="mt-1 text-[11px] text-slate-500">Last updated: {meta.lastUpdated}</p>
                     </div>
                   );
                 })}
@@ -737,6 +1000,12 @@ export default function Home() {
   > | null>(null);
   const [wardsLoading, setWardsLoading] = useState(true);
   const [forumSolutions, setForumSolutions] = useState<ForumSolution[]>([]);
+  const [promises, setPromises] = useState<CivicPromiseRecord[]>([]);
+  const [wardContactsByWardId, setWardContactsByWardId] = useState<Record<
+    string,
+    WardContactRecord
+  > | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   useEffect(() => {
     setWardsLoading(true);
@@ -763,6 +1032,16 @@ export default function Home() {
 
   useEffect(() => {
     fetchForumSolutions().then(setForumSolutions).catch(() => setForumSolutions([]));
+  }, []);
+
+  useEffect(() => {
+    fetchPromises().then(setPromises).catch(() => setPromises([]));
+  }, []);
+
+  useEffect(() => {
+    fetchWardContacts()
+      .then(setWardContactsByWardId)
+      .catch(() => setWardContactsByWardId({}));
   }, []);
 
   const center = useMemo<[number, number]>(() => [20.59, 78.96], []); // pan-India default
@@ -938,29 +1217,48 @@ export default function Home() {
   }, [compareMode, compareAreas, actions, wards]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-sky-50">
+    <div className="flex min-h-screen flex-col bg-sky-50">
       <header className="border-b border-sky-100 bg-white/80 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3 md:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sky-600 text-white shadow-sm">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <a
+                href="https://samaajdata.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sky-600 text-white shadow-sm hover:bg-sky-700"
+                title="Samaaj Data — collective civic intelligence"
+              >
                 <MapPin className="h-4 w-4" />
-              </div>
+              </a>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600">
+                <a
+                  href="https://samaajdata.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-600 hover:text-sky-700"
+                >
                   Samaaj Data
-                </p>
+                </a>
                 <p className="text-sm font-medium text-slate-800">
                   Ward Intelligence Console
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => setAboutOpen(true)}
+                className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg border border-sky-100 bg-sky-50/80 px-2 py-1 text-[11px] font-medium text-sky-800 hover:bg-sky-100 md:hidden"
+              >
+                <Info className="h-3.5 w-3.5" />
+                About
+              </button>
             </div>
             <div className="flex flex-1 items-center gap-2 sm:max-w-md">
               <div className="relative flex-1">
                 <MessageCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Ask me anything (ward, place, topic…)"
+                  placeholder="Search solutions, places, wards, or topics…"
                   value={askInput}
                   onChange={(e) => setAskInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAsk()}
@@ -976,23 +1274,48 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <div className="hidden items-center gap-4 text-xs text-slate-500 md:flex">
-              <span>Bengaluru · Pilot</span>
-              <span className="h-4 w-px bg-slate-200" />
-              <span>For city officials & citizens</span>
+            <div className="hidden flex-col items-end gap-1 text-xs text-slate-500 md:flex">
+              <div className="flex items-center gap-4">
+                <span>Bengaluru · Pilot</span>
+                <span className="h-4 w-px bg-slate-200" />
+                <span>For city officials & citizens</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <a
+                  href="https://samaajdata.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-sky-600 hover:underline"
+                >
+                  samaajdata.org — collective civic intelligence
+                </a>
+                <span className="hidden h-4 w-px bg-slate-200 sm:block" aria-hidden />
+                <button
+                  type="button"
+                  onClick={() => setAboutOpen(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-sky-700"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                  About console
+                </button>
+              </div>
             </div>
           </div>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Tip: search finds <strong className="font-medium text-slate-600">solutions</strong> (knowledge base), wards, and citizen reports. Use <strong className="font-medium text-slate-600">Local data</strong> to browse issues and map clusters.
+          </p>
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-sky-100 bg-sky-50/60 px-3 py-2">
             <p className="text-xs font-semibold text-sky-700">Choose location:</p>
             <button
               type="button"
+              title="Draw two shapes on the map to compare issues, open data, and active citizens side by side."
               onClick={() => {
                 setCompareMode((v) => !v);
                 setCompareAreas([]);
                 setAskReply(
                   compareMode
                     ? "Compare mode turned off."
-                    : "Compare mode on: draw up to 2 areas on the map (polygon or rectangle)."
+                    : "Compare mode: draw Area A and Area B on the map (polygon or rectangle). We’ll show a side-by-side comparison."
                 );
               }}
               className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
@@ -1001,6 +1324,9 @@ export default function Home() {
             >
               {compareMode ? "Exit compare mode" : "Compare areas"}
             </button>
+            <span className="hidden text-[10px] text-slate-500 sm:inline max-w-[200px]">
+              Draw two areas on the map to compare metrics.
+            </span>
             <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
               <input
                 type="text"
@@ -1073,7 +1399,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto flex h-[calc(100vh-3.5rem)] w-full max-w-6xl flex-col md:flex-row">
+      <main className="mx-auto flex min-h-0 flex-1 w-full max-w-6xl flex-col md:flex-row md:h-[calc(100vh-3.5rem-5.5rem)]">
         <section className="h-64 border-b border-sky-100 bg-slate-900 md:h-auto md:flex-1 md:border-b-0 md:border-r">
           <WardMap
             center={center}
@@ -1096,6 +1422,8 @@ export default function Home() {
           selectedAction={selectedAction}
           wardDetailsMap={wardDetailsMap}
           forumSolutions={forumSolutions}
+          promises={promises}
+          wardContactsByWardId={wardContactsByWardId}
           actions={actions}
           onPickSample={openSampleLocality}
           onSolutionsMapFilterChange={setSolutionsMapFilter}
@@ -1118,6 +1446,36 @@ export default function Home() {
           forceCategory={forceSidebarCategory}
         />
       </main>
+
+      <footer className="border-t border-sky-100 bg-white/90 py-3 text-center text-[11px] text-slate-500">
+        <p>
+          <a
+            href="https://samaajdata.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-sky-700 hover:underline"
+          >
+            Samaaj Data
+          </a>
+          {" "}is a collective for civic data, governance context, and citizen action — not a single product alone.
+        </p>
+        <p className="mt-1">
+          This console helps you search <strong className="font-medium text-slate-600">solutions</strong>, explore{" "}
+          <strong className="font-medium text-slate-600">local data</strong> on map and lists, find{" "}
+          <strong className="font-medium text-slate-600">local governance</strong> contacts, and{" "}
+          <strong className="font-medium text-slate-600">connect with active citizens</strong> where listed.
+        </p>
+        <p className="mt-1 text-slate-400">
+          <button
+            type="button"
+            onClick={() => setAboutOpen(true)}
+            className="font-medium text-sky-700 hover:underline"
+          >
+            About this console
+          </button>
+        </p>
+      </footer>
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
 }

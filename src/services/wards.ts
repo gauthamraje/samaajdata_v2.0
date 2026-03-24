@@ -18,6 +18,11 @@ export interface ProvenSolutionRecord {
   fix_description: string;
   contributor_name: string;
   category: Category;
+  /** Optional trust / provenance (edit in wards.json or API) */
+  verification_level?: "community_documented" | "knowledge_base" | "official_dataset";
+  source_url?: string;
+  source_label?: string;
+  last_updated?: string;
 }
 
 /** Local champion (consistent field names for API/Frappe) */

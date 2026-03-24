@@ -23,7 +23,11 @@
         "issue": "Dry waste not being collected",
         "fix_description": "Residents formed a 12-building collective and coordinated with BBMP for weekly dry-waste pickup.",
         "contributor_name": "RWA Central Park",
-        "category": "Waste"
+        "category": "Waste",
+        "verification_level": "community_documented",
+        "source_label": "Ward RWA minutes (sample)",
+        "source_url": "https://example.org/pilot-rwa-minutes",
+        "last_updated": "2025-10-01"
       }
     ],
     "local_champions": [
@@ -65,7 +69,11 @@
         "issue": "Water scarcity and tanker dependence",
         "fix_description": "RWAs pooled funds to install rooftop harvesting, reducing dependence on tanker supply.",
         "contributor_name": "Sunrise Layout RWA",
-        "category": "Water"
+        "category": "Water",
+        "verification_level": "community_documented",
+        "source_label": "RWA pilot report (sample)",
+        "source_url": "https://example.org/pilot-ward2-water",
+        "last_updated": "2025-08-12"
       }
     ],
     "local_champions": [
@@ -107,7 +115,11 @@
         "issue": "Unsafe route for school children",
         "fix_description": "Parents created a safe walking route by fixing signage and working with traffic police.",
         "contributor_name": "Lakshmi Layout Parents Group",
-        "category": "Safety"
+        "category": "Safety",
+        "verification_level": "official_dataset",
+        "source_label": "Traffic police junction audit (sample)",
+        "source_url": "https://example.org/pilot-ward3-safety-dataset",
+        "last_updated": "2025-07-20"
       }
     ],
     "local_champions": [

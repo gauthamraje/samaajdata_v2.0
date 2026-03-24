@@ -1,0 +1,62 @@
+[
+  {
+    "id": "prm-001",
+    "title": "Weekly dry-waste collection for all RWAs in the zone",
+    "actor": "BBMP Solid Waste Management (pilot narrative)",
+    "ward_id": "WARD_1",
+    "jurisdiction": "Bengaluru · Pilot sample",
+    "committed_at": "2025-06-15",
+    "status": "in_progress",
+    "summary": "Commitment to align bulk generators with segregated pickup; progress tracked via ward committee minutes (illustrative).",
+    "source_url": "https://bbmp.gov.in/",
+    "source_label": "Corporation portal (replace with meeting link)"
+  },
+  {
+    "id": "prm-002",
+    "title": "Streetlight audit closure on East Main Road",
+    "actor": "Ward 2 Engineering Cell (sample)",
+    "ward_id": "WARD_2",
+    "jurisdiction": "Bengaluru · Pilot sample",
+    "committed_at": "2025-09-01",
+    "status": "reported",
+    "summary": "Reported in a citizen forum; awaiting official closure note on maintenance portal.",
+    "source_url": "https://example.org/pilot-source-replace",
+    "source_label": "Replace with official ticket / press note"
+  },
+  {
+    "id": "prm-003",
+    "title": "Rainwater harvesting awareness in schools",
+    "actor": "BWSSB / Education dept (city-wide sample)",
+    "ward_id": null,
+    "jurisdiction": "City pilot narrative",
+    "committed_at": "2024-11-20",
+    "status": "completed",
+    "summary": "Pilot program marked complete in annual report excerpt (sample — verify against real documents).",
+    "source_url": "https://bwssb.gov.in/",
+    "source_label": "Agency site (add deep link)"
+  },
+  {
+    "id": "prm-004",
+    "title": "Footpath repair near Lakshmi Circle",
+    "actor": "BBMP Roads (sample)",
+    "ward_id": "WARD_3",
+    "jurisdiction": "Bengaluru · Pilot sample",
+    "committed_at": "2025-02-10",
+    "status": "unclear",
+    "summary": "Mixed signals between resident reports and ward response; needs verification.",
+    "source_url": "https://example.org/pilot-source-replace",
+    "source_label": "Add ward committee minutes"
+  },
+  {
+    "id": "prm-005",
+    "title": "Open data: ward-wise expenditure dashboard",
+    "actor": "Civil society coalition (sample)",
+    "ward_id": null,
+    "jurisdiction": "Advocacy / pilot",
+    "committed_at": "2025-12-01",
+    "status": "in_progress",
+    "summary": "Coalition tracking disclosure commitments; not a government guarantee in this demo.",
+    "source_url": "https://samaajdata.org",
+    "source_label": "Samaaj Data (context)"
+  }
+]

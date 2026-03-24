@@ -1,0 +1,44 @@
+{
+  "WARD_1": {
+    "corporation": "Bruhat Bengaluru Mahanagara Palike (BBMP)",
+    "zone_name": "East Zone (sample — verify)",
+    "zone_office_phone": "+91 80 0000 0001",
+    "ward_office_address": "Ward office, Central — replace with verified address",
+    "ward_office_phone": "+91 80 2222 1001",
+    "ward_office_email": "ward1.office@example.org",
+    "assistant_engineer_name": "Asst. Executive Engineer (sample)",
+    "assistant_engineer_phone": "+91 80 2222 1002",
+    "ward_page_url": "https://bbmp.gov.in/en/web/guest/ward-information",
+    "bescom_circle": "Hudson Circle (sample)",
+    "bwssb_sub_division": "Central subdivision (sample)",
+    "data_note": "Pilot JSON — replace phones, emails, and URLs with verified official contacts before public launch."
+  },
+  "WARD_2": {
+    "corporation": "Bruhat Bengaluru Mahanagara Palike (BBMP)",
+    "zone_name": "East Zone (sample — verify)",
+    "zone_office_phone": "+91 80 0000 0001",
+    "ward_office_address": "Ward office, East — replace with verified address",
+    "ward_office_phone": "+91 80 2222 2001",
+    "assistant_engineer_name": "Asst. Engineer, East (sample)",
+    "assistant_engineer_phone": "+91 80 2222 2002",
+    "ward_office_email": "ward2.office@example.org",
+    "ward_page_url": "https://bbmp.gov.in/en/web/guest/ward-information",
+    "bescom_circle": "Local BESCOM circle (sample)",
+    "bwssb_sub_division": "East subdivision (sample)",
+    "data_note": "Pilot JSON — verify all fields."
+  },
+  "WARD_3": {
+    "corporation": "Bruhat Bengaluru Mahanagara Palike (BBMP)",
+    "zone_name": "West Zone (sample — verify)",
+    "zone_office_phone": "+91 80 0000 0003",
+    "ward_office_address": "Ward office, West — replace with verified address",
+    "ward_office_phone": "+91 80 2222 3001",
+    "assistant_engineer_name": "Asst. Engineer, West (sample)",
+    "assistant_engineer_phone": "+91 80 2222 3002",
+    "ward_office_email": "ward3.office@example.org",
+    "ward_page_url": "https://bbmp.gov.in/en/web/guest/ward-information",
+    "bescom_circle": "West circle (sample)",
+    "bwssb_sub_division": "West subdivision (sample)",
+    "data_note": "Pilot JSON — verify all fields."
+  }
+}
